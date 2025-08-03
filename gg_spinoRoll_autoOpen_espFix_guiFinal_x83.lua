@@ -1,8 +1,7 @@
--- Grow a Garden: Auto Roll Spinosaurus + Auto Open + Smart ESP + GUI | By ChatGPT
+-- Grow a Garden: Auto Roll Spinosaurus + Auto Open + Smart ESP Filtered + GUI
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local eggName = "Primal Egg"
@@ -11,7 +10,7 @@ local targetPet = "Spinosaurus"
 local autoRolling = false
 local espEnabled = false
 
--- GUI
+-- GUI Setup
 local gui = Instance.new("ScreenGui", CoreGui)
 gui.Name = "SpinoGUI"
 
@@ -25,7 +24,7 @@ frame.Draggable = true
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "🌿 Grow a Garden: Spino Auto Roll & ESP"
+title.Text = "🌿 Spino Auto Roll & ESP"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
@@ -66,17 +65,21 @@ espBtn.TextColor3 = Color3.new(1,1,1)
 espBtn.Font = Enum.Font.GothamBold
 espBtn.TextSize = 14
 
--- Update label
+-- GUI Helpers
 local function updateStatus(text)
 	status.Text = text
 end
 
--- Smart ESP only for real pets
+-- ESP Logic
 local function isRealPet(model)
-	return model:IsA("Model")
-		and model:FindFirstChildWhichIsA("BasePart")
-		and (model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart"))
-		and model.Parent == Workspace
+	if not model:IsA("Model") then return false end
+	if model:FindFirstChild("Humanoid") or model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Animate") then return false end
+	if model:FindFirstChild("Torso") then return false end
+	local part = model:FindFirstChildWhichIsA("BasePart")
+	if not part then return false end
+	if model.Name == "Camera" then return false end
+	if model:IsDescendantOf(Players) then return false end
+	return true
 end
 
 local function addESP(pet)
@@ -110,7 +113,7 @@ espBtn.MouseButton1Click:Connect(function()
 	espBtn.Text = espEnabled and "👁️ Toggle ESP (ON)" or "👁️ Toggle ESP (OFF)"
 end)
 
--- Find Egg System
+-- Egg detection
 local function findEggRemote()
 	for _, fn in pairs(getgc(true)) do
 		if typeof(fn) == "function" and getfenv(fn).script then
@@ -146,6 +149,8 @@ local function startRoll()
 	end
 
 	autoRolling = true
+	updateStatus("🔁 Started rolling for Spinosaurus...")
+
 	while autoRolling do
 		local drops = system.GetPossibleRewards(eggName)
 		if hasSpino(drops) then
@@ -153,7 +158,7 @@ local function startRoll()
 			system.Open(eggName)
 			break
 		else
-			updateStatus("🔁 Rolling...")
+			updateStatus("🔄 Rolling...")
 			system.Roll(eggName)
 			task.wait(0.4)
 		end
@@ -171,7 +176,7 @@ stopBtn.MouseButton1Click:Connect(function()
 	updateStatus("⛔ Stopped.")
 end)
 
--- Loop ESP Scan
+-- ESP loop
 task.spawn(function()
 	while true do
 		if espEnabled then scanESP() end
