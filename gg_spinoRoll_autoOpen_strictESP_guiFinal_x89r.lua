@@ -1,114 +1,82 @@
---[[ 📜 Grow a Garden Auto-Roller & ESP for Spinosaurus by ChatGPT ]]
+--[[ 📜 Grow a Garden | Passive ESP + Logger (No Auto Hatch) ]]
+-- يراقب البيض المفتوح ويعرض اسم الحيوان. يتوقف تلقائيًا عند Spinosaurus.
 
--- SETTINGS
 local TARGET_PET = "Spinosaurus"
-local EGG_NAME = "Primal Egg"
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- UI Library
-local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+-- واجهة المستخدم
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "SpinoWatcherUI"
 local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Size = UDim2.new(0, 250, 0, 120)
 Frame.Position = UDim2.new(0, 20, 0, 100)
-Frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderSizePixel = 0
 
-local autoRollBtn = Instance.new("TextButton", Frame)
-autoRollBtn.Size = UDim2.new(1, 0, 0.5, 0)
-autoRollBtn.Position = UDim2.new(0, 0, 0, 0)
-autoRollBtn.Text = "🔁 Start Auto Roll"
-autoRollBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+local Toggle = Instance.new("TextButton", Frame)
+Toggle.Size = UDim2.new(1, 0, 0.4, 0)
+Toggle.Position = UDim2.new(0, 0, 0, 0)
+Toggle.Text = "▶️ Start Watching"
+Toggle.TextColor3 = Color3.new(1, 1, 1)
+Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Toggle.Font = Enum.Font.SourceSansBold
+Toggle.TextSize = 18
 
-local espBtn = Instance.new("TextButton", Frame)
-espBtn.Size = UDim2.new(1, 0, 0.5, 0)
-espBtn.Position = UDim2.new(0, 0, 0.5, 0)
-espBtn.Text = "👁️ Enable ESP"
-espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+local Label = Instance.new("TextLabel", Frame)
+Label.Size = UDim2.new(1, 0, 0.6, 0)
+Label.Position = UDim2.new(0, 0, 0.4, 0)
+Label.Text = "🐣 Last Hatched: ..."
+Label.TextColor3 = Color3.new(1, 1, 1)
+Label.BackgroundTransparency = 1
+Label.Font = Enum.Font.SourceSansBold
+Label.TextSize = 18
 
--- Variables
-local autoRolling = false
-local espEnabled = false
-local espConnections = {}
-
--- ESP Function
-local function highlightSpinos()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v.Name == TARGET_PET and not v:FindFirstChild("ESPBox") then
-            local b = Instance.new("BoxHandleAdornment", v)
-            b.Name = "ESPBox"
-            b.Size = v:GetExtentsSize()
-            b.Adornee = v
-            b.AlwaysOnTop = true
-            b.ZIndex = 10
-            b.Transparency = 0.5
-            b.Color3 = Color3.fromRGB(0, 255, 0)
-        end
-    end
+-- وظيفة ESP
+local function highlight(model)
+    if model:FindFirstChild("ESPBox") then return end
+    local box = Instance.new("BoxHandleAdornment", model)
+    box.Name = "ESPBox"
+    box.Size = model:GetExtentsSize()
+    box.Adornee = model
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Transparency = 0.4
+    box.Color3 = Color3.fromRGB(0, 255, 0)
 end
 
--- Toggle ESP
-espBtn.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    espBtn.Text = espEnabled and "👁️ Disable ESP" or "👁️ Enable ESP"
-    if espEnabled then
-        highlightSpinos()
-        table.insert(espConnections, workspace.DescendantAdded:Connect(function(obj)
-            if obj:IsA("Model") and obj.Name == TARGET_PET then
-                highlightSpinos()
-            end
-        end))
-    else
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:FindFirstChild("ESPBox") then
-                v.ESPBox:Destroy()
-            end
-        end
-        for _, c in pairs(espConnections) do
-            c:Disconnect()
-        end
-        espConnections = {}
-    end
-end)
+-- المراقبة
+local watching = false
+local conn = nil
 
--- Auto Roll Logic
-local function openEgg()
-    local args = {
-        [1] = EGG_NAME
-    }
-    local success, err = pcall(function()
-        game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("HatchEgg"):FireServer(unpack(args))
+local function startWatching()
+    local petsFolder = LocalPlayer:WaitForChild("Pets", 10)
+    if not petsFolder then return warn("❌ Pets folder not found") end
+
+    conn = petsFolder.ChildAdded:Connect(function(pet)
+        if not watching then return end
+        if pet:IsA("Folder") then
+            task.wait(0.5)
+            local petName = pet.Name
+            Label.Text = "🐣 Last Hatched: " .. petName
+            local worldPet = workspace:FindFirstChild(petName)
+            if worldPet then highlight(worldPet) end
+            if petName == TARGET_PET then
+                watching = false
+                Toggle.Text = "✅ Found: " .. TARGET_PET
+                conn:Disconnect()
+            end
+        end
     end)
-    if not success then
-        warn("❌ Error opening egg: ", err)
-    end
 end
 
--- Check Inventory
-local function hasSpinosaurus()
-    local inv = game:GetService("Players").LocalPlayer:FindFirstChild("Pets")
-    if inv then
-        for _, pet in pairs(inv:GetChildren()) do
-            if pet.Name == TARGET_PET then
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- Toggle Auto Roll
-autoRollBtn.MouseButton1Click:Connect(function()
-    autoRolling = not autoRolling
-    autoRollBtn.Text = autoRolling and "⏹️ Stop Auto Roll" or "🔁 Start Auto Roll"
-
-    if autoRolling then
-        task.spawn(function()
-            while autoRolling and not hasSpinosaurus() do
-                openEgg()
-                task.wait(1.5)
-            end
-            if hasSpinosaurus() then
-                autoRollBtn.Text = "✅ Spinosaurus Found!"
-                autoRolling = false
-            end
-        end)
+Toggle.MouseButton1Click:Connect(function()
+    watching = not watching
+    Toggle.Text = watching and "⏹️ Stop Watching" or "▶️ Start Watching"
+    if watching and not conn then
+        startWatching()
+    elseif not watching and conn then
+        conn:Disconnect()
+        conn = nil
     end
 end)
