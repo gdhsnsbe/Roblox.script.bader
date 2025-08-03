@@ -1,82 +1,103 @@
---[[ 📜 Grow a Garden | Passive ESP + Logger (No Auto Hatch) ]]
--- يراقب البيض المفتوح ويعرض اسم الحيوان. يتوقف تلقائيًا عند Spinosaurus.
+--[[ 📜 Grow a Garden | Predictive Auto-Roll with ESP (Pre-Hatch Detection) ]]
+-- Watches PlayerGui.PetAssest to predict next pet before it hatches.
+-- Rolls "Primal Egg" until "Spinosaurus" is predicted.
+-- Displays ESP with predicted name above the egg.
 
 local TARGET_PET = "Spinosaurus"
+local EGG_NAME = "Primal Egg"
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- واجهة المستخدم
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "SpinoWatcherUI"
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 250, 0, 120)
-Frame.Position = UDim2.new(0, 20, 0, 100)
-Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Frame.BorderSizePixel = 0
+-- UI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "PredictRollUI"
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 240, 0, 120)
+frame.Position = UDim2.new(0, 20, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
 
-local Toggle = Instance.new("TextButton", Frame)
-Toggle.Size = UDim2.new(1, 0, 0.4, 0)
-Toggle.Position = UDim2.new(0, 0, 0, 0)
-Toggle.Text = "▶️ Start Watching"
-Toggle.TextColor3 = Color3.new(1, 1, 1)
-Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Toggle.Font = Enum.Font.SourceSansBold
-Toggle.TextSize = 18
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(1, 0, 0.4, 0)
+toggle.Text = "▶️ Start Predict Roll"
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
+toggle.Font = Enum.Font.SourceSansBold
+toggle.TextSize = 18
 
-local Label = Instance.new("TextLabel", Frame)
-Label.Size = UDim2.new(1, 0, 0.6, 0)
-Label.Position = UDim2.new(0, 0, 0.4, 0)
-Label.Text = "🐣 Last Hatched: ..."
-Label.TextColor3 = Color3.new(1, 1, 1)
-Label.BackgroundTransparency = 1
-Label.Font = Enum.Font.SourceSansBold
-Label.TextSize = 18
+local label = Instance.new("TextLabel", frame)
+label.Size = UDim2.new(1, 0, 0.6, 0)
+label.Position = UDim2.new(0, 0, 0.4, 0)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.new(1,1,1)
+label.Font = Enum.Font.SourceSansBold
+label.TextSize = 18
+label.Text = "🐣 Waiting..."
 
--- وظيفة ESP
-local function highlight(model)
-    if model:FindFirstChild("ESPBox") then return end
-    local box = Instance.new("BoxHandleAdornment", model)
-    box.Name = "ESPBox"
-    box.Size = model:GetExtentsSize()
-    box.Adornee = model
-    box.AlwaysOnTop = true
-    box.ZIndex = 5
-    box.Transparency = 0.4
-    box.Color3 = Color3.fromRGB(0, 255, 0)
+-- ESP Billboard
+local function setESP(name)
+    local existing = workspace:FindFirstChild("EggESP")
+    if existing then existing:Destroy() end
+
+    local egg = workspace:FindFirstChild(EGG_NAME)
+    if egg then
+        local esp = Instance.new("BillboardGui", egg)
+        esp.Name = "EggESP"
+        esp.Size = UDim2.new(0, 100, 0, 50)
+        esp.StudsOffset = Vector3.new(0, 5, 0)
+        esp.AlwaysOnTop = true
+
+        local text = Instance.new("TextLabel", esp)
+        text.Size = UDim2.new(1, 0, 1, 0)
+        text.BackgroundTransparency = 1
+        text.TextColor3 = Color3.fromRGB(0, 255, 0)
+        text.Font = Enum.Font.SourceSansBold
+        text.TextSize = 18
+        text.Text = "🔮 " .. name
+    end
 end
 
--- المراقبة
-local watching = false
-local conn = nil
+-- Main logic
+local rolling = false
+local function startRolling()
+    local path = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ReplicatedAssest"):WaitForChild("PetAssest")
 
-local function startWatching()
-    local petsFolder = LocalPlayer:WaitForChild("Pets", 10)
-    if not petsFolder then return warn("❌ Pets folder not found") end
+    while rolling do
+        -- Listen for pet prediction
+        local predictedPet = nil
+        local connection
+        connection = path.ChildAdded:Connect(function(child)
+            if not rolling then return end
+            predictedPet = child.Name
+            label.Text = "🔮 Predicted: " .. predictedPet
+            setESP(predictedPet)
 
-    conn = petsFolder.ChildAdded:Connect(function(pet)
-        if not watching then return end
-        if pet:IsA("Folder") then
-            task.wait(0.5)
-            local petName = pet.Name
-            Label.Text = "🐣 Last Hatched: " .. petName
-            local worldPet = workspace:FindFirstChild(petName)
-            if worldPet then highlight(worldPet) end
-            if petName == TARGET_PET then
-                watching = false
-                Toggle.Text = "✅ Found: " .. TARGET_PET
-                conn:Disconnect()
+            if predictedPet == TARGET_PET then
+                rolling = false
+                toggle.Text = "✅ Found: " .. TARGET_PET
+                connection:Disconnect()
             end
+        end)
+
+        -- Fire hatch request
+        local success, err = pcall(function()
+            ReplicatedStorage:WaitForChild("Events"):WaitForChild("HatchEgg"):FireServer(EGG_NAME)
+        end)
+        if not success then
+            warn("Failed to send roll:", err)
         end
-    end)
+
+        task.wait(2.5)
+        if connection.Connected then connection:Disconnect() end
+    end
 end
 
-Toggle.MouseButton1Click:Connect(function()
-    watching = not watching
-    Toggle.Text = watching and "⏹️ Stop Watching" or "▶️ Start Watching"
-    if watching and not conn then
-        startWatching()
-    elseif not watching and conn then
-        conn:Disconnect()
-        conn = nil
+-- Toggle
+toggle.MouseButton1Click:Connect(function()
+    rolling = not rolling
+    toggle.Text = rolling and "⏹️ Stop Rolling" or "▶️ Start Predict Roll"
+    if rolling then
+        startRolling()
     end
 end)
