@@ -1,185 +1,114 @@
--- Grow a Garden: Auto Roll Spinosaurus + Auto Open + Smart ESP Filtered + GUI
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
+--[[ 📜 Grow a Garden Auto-Roller & ESP for Spinosaurus by ChatGPT ]]
 
-local LocalPlayer = Players.LocalPlayer
-local eggName = "Primal Egg"
-local targetPet = "Spinosaurus"
+-- SETTINGS
+local TARGET_PET = "Spinosaurus"
+local EGG_NAME = "Primal Egg"
 
+-- UI Library
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Position = UDim2.new(0, 20, 0, 100)
+Frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+local autoRollBtn = Instance.new("TextButton", Frame)
+autoRollBtn.Size = UDim2.new(1, 0, 0.5, 0)
+autoRollBtn.Position = UDim2.new(0, 0, 0, 0)
+autoRollBtn.Text = "🔁 Start Auto Roll"
+autoRollBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+
+local espBtn = Instance.new("TextButton", Frame)
+espBtn.Size = UDim2.new(1, 0, 0.5, 0)
+espBtn.Position = UDim2.new(0, 0, 0.5, 0)
+espBtn.Text = "👁️ Enable ESP"
+espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+
+-- Variables
 local autoRolling = false
 local espEnabled = false
+local espConnections = {}
 
--- GUI Setup
-local gui = Instance.new("ScreenGui", CoreGui)
-gui.Name = "SpinoGUI"
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 320, 0, 200)
-frame.Position = UDim2.new(0.5, -160, 0.4, 0)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.Active = true
-frame.Draggable = true
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.Text = "🌿 Spino Auto Roll & ESP"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-
-local status = Instance.new("TextLabel", frame)
-status.Position = UDim2.new(0, 10, 0, 40)
-status.Size = UDim2.new(1, -20, 0, 40)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.new(1, 1, 1)
-status.Font = Enum.Font.Gotham
-status.TextSize = 14
-status.Text = "🔄 Ready..."
-
-local startBtn = Instance.new("TextButton", frame)
-startBtn.Position = UDim2.new(0.05, 0, 1, -90)
-startBtn.Size = UDim2.new(0.4, 0, 0, 35)
-startBtn.Text = "▶️ Start Roll"
-startBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 60)
-startBtn.TextColor3 = Color3.new(1,1,1)
-startBtn.Font = Enum.Font.GothamBold
-startBtn.TextSize = 14
-
-local stopBtn = Instance.new("TextButton", frame)
-stopBtn.Position = UDim2.new(0.55, 0, 1, -90)
-stopBtn.Size = UDim2.new(0.4, 0, 0, 35)
-stopBtn.Text = "⛔ Stop"
-stopBtn.BackgroundColor3 = Color3.fromRGB(170, 60, 60)
-stopBtn.TextColor3 = Color3.new(1,1,1)
-stopBtn.Font = Enum.Font.GothamBold
-stopBtn.TextSize = 14
-
-local espBtn = Instance.new("TextButton", frame)
-espBtn.Position = UDim2.new(0.05, 0, 1, -45)
-espBtn.Size = UDim2.new(0.9, 0, 0, 35)
-espBtn.Text = "👁️ Toggle ESP (OFF)"
-espBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 200)
-espBtn.TextColor3 = Color3.new(1,1,1)
-espBtn.Font = Enum.Font.GothamBold
-espBtn.TextSize = 14
-
--- GUI Helpers
-local function updateStatus(text)
-	status.Text = text
+-- ESP Function
+local function highlightSpinos()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name == TARGET_PET and not v:FindFirstChild("ESPBox") then
+            local b = Instance.new("BoxHandleAdornment", v)
+            b.Name = "ESPBox"
+            b.Size = v:GetExtentsSize()
+            b.Adornee = v
+            b.AlwaysOnTop = true
+            b.ZIndex = 10
+            b.Transparency = 0.5
+            b.Color3 = Color3.fromRGB(0, 255, 0)
+        end
+    end
 end
 
--- ESP Logic
-local function isRealPet(model)
-	if not model:IsA("Model") then return false end
-	if model:FindFirstChild("Humanoid") or model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Animate") then return false end
-	if model:FindFirstChild("Torso") then return false end
-	local part = model:FindFirstChildWhichIsA("BasePart")
-	if not part then return false end
-	if model.Name == "Camera" then return false end
-	if model:IsDescendantOf(Players) then return false end
-	return true
-end
-
-local function addESP(pet)
-	if not pet or pet:FindFirstChild("ESP") or not isRealPet(pet) then return end
-	local adornee = pet:FindFirstChildWhichIsA("BasePart")
-	local esp = Instance.new("BillboardGui", pet)
-	esp.Name = "ESP"
-	esp.Adornee = adornee
-	esp.Size = UDim2.new(0, 100, 0, 30)
-	esp.AlwaysOnTop = true
-
-	local label = Instance.new("TextLabel", esp)
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = "🐾 " .. pet.Name
-	label.TextColor3 = Color3.fromRGB(255, 200, 200)
-	label.TextScaled = true
-end
-
-local function scanESP()
-	if not espEnabled then return end
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if isRealPet(obj) and not obj:FindFirstChild("ESP") then
-			addESP(obj)
-		end
-	end
-end
-
+-- Toggle ESP
 espBtn.MouseButton1Click:Connect(function()
-	espEnabled = not espEnabled
-	espBtn.Text = espEnabled and "👁️ Toggle ESP (ON)" or "👁️ Toggle ESP (OFF)"
+    espEnabled = not espEnabled
+    espBtn.Text = espEnabled and "👁️ Disable ESP" or "👁️ Enable ESP"
+    if espEnabled then
+        highlightSpinos()
+        table.insert(espConnections, workspace.DescendantAdded:Connect(function(obj)
+            if obj:IsA("Model") and obj.Name == TARGET_PET then
+                highlightSpinos()
+            end
+        end))
+    else
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:FindFirstChild("ESPBox") then
+                v.ESPBox:Destroy()
+            end
+        end
+        for _, c in pairs(espConnections) do
+            c:Disconnect()
+        end
+        espConnections = {}
+    end
 end)
 
--- Egg detection
-local function findEggRemote()
-	for _, fn in pairs(getgc(true)) do
-		if typeof(fn) == "function" and getfenv(fn).script then
-			local consts = debug.getconstants(fn)
-			for _, c in pairs(consts) do
-				if tostring(c):lower():find("primal") then
-					local ups = debug.getupvalues(fn)
-					for _, u in pairs(ups) do
-						if typeof(u) == "table" and u.Roll and u.GetPossibleRewards and u.Open then
-							return u
-						end
-					end
-				end
-			end
-		end
-	end
+-- Auto Roll Logic
+local function openEgg()
+    local args = {
+        [1] = EGG_NAME
+    }
+    local success, err = pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("HatchEgg"):FireServer(unpack(args))
+    end)
+    if not success then
+        warn("❌ Error opening egg: ", err)
+    end
 end
 
-local function hasSpino(dropList)
-	for _, pet in pairs(dropList or {}) do
-		if tostring(pet):lower():find(targetPet:lower()) then
-			return true
-		end
-	end
-	return false
+-- Check Inventory
+local function hasSpinosaurus()
+    local inv = game:GetService("Players").LocalPlayer:FindFirstChild("Pets")
+    if inv then
+        for _, pet in pairs(inv:GetChildren()) do
+            if pet.Name == TARGET_PET then
+                return true
+            end
+        end
+    end
+    return false
 end
 
-local function startRoll()
-	local system = findEggRemote()
-	if not system then
-		updateStatus("❌ Egg system not found.")
-		return
-	end
+-- Toggle Auto Roll
+autoRollBtn.MouseButton1Click:Connect(function()
+    autoRolling = not autoRolling
+    autoRollBtn.Text = autoRolling and "⏹️ Stop Auto Roll" or "🔁 Start Auto Roll"
 
-	autoRolling = true
-	updateStatus("🔁 Started rolling for Spinosaurus...")
-
-	while autoRolling do
-		local drops = system.GetPossibleRewards(eggName)
-		if hasSpino(drops) then
-			updateStatus("🎯 Spinosaurus found! Opening...")
-			system.Open(eggName)
-			break
-		else
-			updateStatus("🔄 Rolling...")
-			system.Roll(eggName)
-			task.wait(0.4)
-		end
-	end
-end
-
-startBtn.MouseButton1Click:Connect(function()
-	if not autoRolling then
-		startRoll()
-	end
-end)
-
-stopBtn.MouseButton1Click:Connect(function()
-	autoRolling = false
-	updateStatus("⛔ Stopped.")
-end)
-
--- ESP loop
-task.spawn(function()
-	while true do
-		if espEnabled then scanESP() end
-		task.wait(2.5)
-	end
+    if autoRolling then
+        task.spawn(function()
+            while autoRolling and not hasSpinosaurus() do
+                openEgg()
+                task.wait(1.5)
+            end
+            if hasSpinosaurus() then
+                autoRollBtn.Text = "✅ Spinosaurus Found!"
+                autoRolling = false
+            end
+        end)
+    end
 end)
