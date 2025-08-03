@@ -1,46 +1,45 @@
--- Egg Randomizer GUI Script (Client-side Fun)
+-- Egg Randomizer GUI Script (Fixed Version)
 local pets = {"Duke", "Pumpkin Panda", "Phantom Cat", "Golden Dog", "Leaf Bunny", "Fire Wolf", "Dark Reaper"}
 
--- GUI setup
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "EggRandomizer"
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "EggRandomizer"
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 250, 0, 120)
-Frame.Position = UDim2.new(0.5, -125, 0.4, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.BorderSizePixel = 0
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 120)
+frame.Position = UDim2.new(0.5, -125, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
 
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🎲 Egg Randomizer"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.BorderSizePixel = 0
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "🎲 Egg Randomizer"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.BorderSizePixel = 0
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
 
-local Result = Instance.new("TextLabel", Frame)
-Result.Size = UDim2.new(1, 0, 0, 40)
-Result.Position = UDim2.new(0, 0, 0, 30)
-Result.Text = "Click Roll to Start!"
-Result.TextColor3 = Color3.fromRGB(255, 255, 255)
-Result.BackgroundTransparency = 1
-Result.Font = Enum.Font.Gotham
-Result.TextSize = 20
+local result = Instance.new("TextLabel", frame)
+result.Size = UDim2.new(1, 0, 0, 40)
+result.Position = UDim2.new(0, 0, 0, 30)
+result.Text = "Click Roll to Start!"
+result.TextColor3 = Color3.fromRGB(255, 255, 255)
+result.BackgroundTransparency = 1
+result.Font = Enum.Font.Gotham
+result.TextSize = 20
 
-local Roll = Instance.new("TextButton", Frame)
-Roll.Size = UDim2.new(1, 0, 0, 40)
-Roll.Position = UDim2.new(0, 0, 1, -40)
-Roll.Text = "🎰 Roll"
-Roll.TextColor3 = Color3.fromRGB(255, 255, 255)
-Roll.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-Roll.BorderSizePixel = 0
-Roll.Font = Enum.Font.GothamBold
-Roll.TextSize = 20
+local roll = Instance.new("TextButton", frame)
+roll.Size = UDim2.new(1, 0, 0, 40)
+roll.Position = UDim2.new(0, 0, 1, -40)
+roll.Text = "🎰 Roll"
+roll.TextColor3 = Color3.fromRGB(255, 255, 255)
+roll.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+roll.BorderSizePixel = 0
+roll.Font = Enum.Font.GothamBold
+roll.TextSize = 20
 
-Roll.MouseButton1Click:Connect(function()
+roll.MouseButton1Click:Connect(function()
 	local chosen = pets[math.random(1, #pets)]
-	Result.Text = "🐾 You got: " .. chosen .. "!"
-end).   
-Add randomizer script. 
+	result.Text = "🐾 You got: " .. chosen .. "!"
+end)
+add egg randomizer. 
