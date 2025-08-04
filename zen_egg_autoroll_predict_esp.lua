@@ -81,4 +81,68 @@ local function attachESPToEgg(predictedPet)
                 else
                     local gui = egg:FindFirstChild("PredictionESP")
                     if gui and gui:IsA("BillboardGui") then
-                        local label = gui:FindFirstChildOfClass("TextLabel
+                        local label = gui:FindFirstChildOfClass("TextLabel")
+                        if label then
+                            label.Text = "🔮 " .. predictedPet
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- عملية الرول
+local rolling = false
+local function startRolling(eggName, targetPet)
+    local predictPath = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ReplicatedAssest"):WaitForChild("PetAssest")
+
+    while rolling do
+        local found = false
+        local connection
+        connection = predictPath.ChildAdded:Connect(function(child)
+            if not rolling then return end
+            local predictedPet = child.Name
+            attachESPToEgg(predictedPet)
+
+            if predictedPet == targetPet then
+                rolling = false
+                toggle.Text = "✅ Found: " .. targetPet
+                found = true
+                connection:Disconnect()
+            end
+        end)
+
+        local success, err = pcall(function()
+            ReplicatedStorage:WaitForChild("Events"):WaitForChild("HatchEgg"):FireServer(eggName)
+        end)
+
+        if not success then
+            warn("⚠️ Failed to roll:", err)
+        end
+
+        task.wait(2.5)
+        if connection and connection.Connected then connection:Disconnect() end
+        if found then break end
+    end
+end
+
+-- الزر
+toggle.MouseButton1Click:Connect(function()
+    if rolling then
+        rolling = false
+        toggle.Text = "▶️ Start AutoRoll"
+        return
+    end
+    local egg = eggBox.Text
+    local pet = petBox.Text
+    if egg == "" or pet == "" then
+        toggle.Text = "❌ Fill all fields"
+        task.wait(1)
+        toggle.Text = "▶️ Start AutoRoll"
+        return
+    end
+    rolling = true
+    toggle.Text = "⏳ Rolling..."
+    startRolling(egg, pet)
+end)
